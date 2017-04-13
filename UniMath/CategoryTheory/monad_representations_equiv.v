@@ -63,18 +63,75 @@ Section kleisli_monad_def.
 
 End kleisli_monad_def.
 
+
+
 (** * Equivalence of the types of Kelisli monads and traditional monads *)
 Section monad_representations_equiv.
 
-  Definition monad_to_kleisli {C : precategory} : Monad C → kleisli_monad C :=
+  Context {C : precategory}.
+
+  Definition monad_to_kleisli : Monad C → kleisli_monad C :=
     fun T => (functor_on_objects T ,, (pr1 (@Monads.η C T) ,, @Monads.bind C T))
                ,, @Monad_law2 C T ,, @η_bind C T ,, @bind_bind C T.
 
-  Lemma isweq_monad_to_kleisli (C : precategory) : isweq (@monad_to_kleisli C).
+  Definition kleisli_to_functor : kleisli_monad C → functor C C.
   Proof.
+    intros T.
+    use mk_functor.
+    + exists T.
+      intros x y f.
+      exact (bind (f · (η T y))).
+    + split.
+      ++ intro x.
+         refine (_ @ kleisli_law1 T x).
+         exact (maponpaths bind (id_left _)).
+      ++ intros x y z f g.
+         refine (_ @ !(kleisli_law3 T _ _ _ _ _)).
+         refine (maponpaths bind (!(assoc _ _ _) @ maponpaths (compose f) _ @ assoc _ _ _)).
+         exact (!(kleisli_law2 T y z _)).
+  Defined.
+
+  Definition kleisli_to_μ (T : kleisli_monad C) : (kleisli_to_functor T) □ (kleisli_to_functor T) ⟹ (kleisli_to_functor T).
+  Proof.
+    mkpair.
+    + intro x.
+      exact (bind (identity (T x))).
+    + intros x y f.
+      refine (kleisli_law3 T _ _ _ _ _ @ maponpaths bind _ @ !(kleisli_law3 T _ _ _ _ _)).
+      refine (!(assoc _ _ _) @ _ @ !(id_left _)).
+      refine (remove_id_right _ _ _ _ _ _ _ (idpath _)).
+      now apply kleisli_law2.
+  Defined.
+
+  Definition kleisli_to_η  (T : kleisli_monad C) : nat_trans (functor_identity C) (kleisli_to_functor T).
+  Proof.
+    use mk_nat_trans.
+    + exact (η T).
+    + intros x y f.
+      exact (!(kleisli_law2 T _ _ _)).
+  Defined.
+
+  Definition kleisli_to_monad : kleisli_monad C → Monad C.
+  Proof.
+    intros T.
+    refine (((kleisli_to_functor T,, kleisli_to_μ T) ,, kleisli_to_η T) ,, _).
+    repeat split; intros; simpl.
+    + now apply kleisli_law2.
+    + refine (kleisli_law3 T _ _ _ _ _ @ _).
+      rewrite <- assoc.
+      refine (maponpaths (fun x => bind (η T c · x)) (kleisli_law2 T _ _ _) @ _).
+      rewrite id_right.
+      now apply kleisli_law1.
+    + refine (maponpaths (fun x => bind x · bind (identity (T c))) _).
+      refine (_ @ kleisli_law1 T (T c)).
+      replace (identity (T c)) with (bind (η T c)).
+
+  Lemma isweq_monad_to_kleisli : isweq monad_to_kleisli.
+  Proof.
+
   Admitted.
 
-  Definition weq_kleisli_monad (C : precategory) : weq (Monad C) (kleisli_monad C) :=
-    @monad_to_kleisli C ,, isweq_monad_to_kleisli C.
+  Definition weq_kleisli_monad : weq (Monad C) (kleisli_monad C) :=
+    monad_to_kleisli ,, isweq_monad_to_kleisli.
 
 End monad_representations_equiv.
