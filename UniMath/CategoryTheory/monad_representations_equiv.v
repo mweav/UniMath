@@ -128,45 +128,62 @@ Section monad_representations_equiv.
                 now apply id_right).
   Defined.
 
-  Lemma kleisli_to_monad_inv (hsC : has_homsets C) (T : kleisli_monad C) :
-    monad_to_kleisli (kleisli_to_monad T) = T.
-  Proof.
-    apply (invmaponpathsincl pr1).
-      { apply isinclpr1.
-        intros ?.
-        now apply (isaprop_kleisli_laws hsC).
-      }
-      repeat (use total2_paths_f;
-               try reflexivity;
-               try rewrite idpath_transportf).
-      simpl; unfold Monads.bind; simpl.
-      apply funextsec; intro a.
-      apply funextsec; intro b.
-      apply funextsec; intro f.
-      rewrite (kleisli_law3 T).
-      apply (maponpaths bind).
-      rewrite <- assoc , (kleisli_law2 T).
-      now apply id_right.
-  Qed.
+  Context (hsC : has_homsets C).
 
-  Lemma monad_to_kleisli_inv (hsC : has_homsets C) (T : Monad C) :
+  Lemma monad_to_kleisli_inv (T : Monad C) :
     kleisli_to_monad (monad_to_kleisli T) = T.
   Proof.
+    induction T as [T TisMonad].
+    apply subtypeEquality.
+    { intros ?.
+      now apply (isaprop_Monad_laws C hsC). }
+    use total2_paths_f.
+    use total2_paths_f.
+    apply (functor_eq _ _ hsC).
+    use pair_path_in2.
+    + apply funextsec; intro a.
+      apply funextsec; intro b.
+      apply funextsec; intro f.
+      simpl; unfold bind, kleisli_bind, η,
+             kleisli_unit, Monads.bind; simpl.
+      rewrite functor_comp, <- assoc.
+      apply remove_id_right.
+      ++ now apply (@Monad_law2 _ (T ,, TisMonad) b).
+      ++ reflexivity.
+    + simpl.
+      match goal with
+      | |- transportf ?s ?t ?r = ?q => set (eq := t)
+      end.
+      unfold nat_trans.
+      rewrite transportf_total2.
+      apply (nat_trans_eq hsC).
+      intro x. simpl.
+      rewrite (functtransportf (fun F : (functor C C) => pr1 (pr1 F)) (fun F => ∏ x, C ⟦ F (F x) , F x ⟧)).
+      admit.
+    + admit.
   Admitted.
 
-  Lemma isweq_monad_to_kleisli (hsC : has_homsets C) : isweq monad_to_kleisli.
+  Lemma kleisli_to_monad_inv (T : kleisli_monad C) :
+    monad_to_kleisli (kleisli_to_monad T) = T.
   Proof.
-    intros T.
-    refine ((kleisli_to_monad T ,, kleisli_to_monad_inv hsC T),, _).
-    intros [T' Teq].
-    apply (invmaponpathsincl pr1).
-    { apply isinclpr1.
-      intros ?.
-      admit.
-    }
-    simpl. rewrite <- Teq.
-    exact (!(monad_to_kleisli_inv hsC T')).
-  Admitted.
+    apply subtypeEquality.
+    { intros ?.
+      now apply (isaprop_kleisli_laws hsC). }
+    repeat (use total2_paths_f;
+            try reflexivity;
+            try rewrite idpath_transportf).
+    simpl; unfold Monads.bind; simpl.
+    apply funextsec; intro a.
+    apply funextsec; intro b.
+    apply funextsec; intro f.
+    rewrite (kleisli_law3 T).
+    apply (maponpaths bind).
+    rewrite <- assoc , (kleisli_law2 T).
+    now apply id_right.
+  Qed.
+
+  Definition isweq_monad_to_kleisli : isweq monad_to_kleisli :=
+    gradth monad_to_kleisli kleisli_to_monad monad_to_kleisli_inv kleisli_to_monad_inv.
 
   Definition weq_kleisli_monad : weq (Monad C) (kleisli_monad C) :=
     monad_to_kleisli ,, isweq_monad_to_kleisli.
